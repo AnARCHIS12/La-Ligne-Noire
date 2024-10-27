@@ -1,6 +1,8 @@
 // Import des modules
 require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder, REST, Routes, SlashCommandBuilder } = require('discord.js');
+const express = require('express');
+const app = express();
 
 // Initialisation du client
 const client = new Client({
@@ -17,9 +19,9 @@ const CONFIG = {
     token: process.env.DISCORD_TOKEN,
     clientId: process.env.CLIENT_ID,
     guildId: process.env.GUILD_ID,
-    port: process.env.BOT_PORT || 3000,  // Port par défaut à 3000 si non défini
-    welcomeChannel: process.env.WELCOME_CHANNEL || 'bienvenue',  // Nom ou ID du canal de bienvenue
+    port: 3000,  // Port fixé directement ici
     pingInterval: 300000,
+    welcomeChannel: process.env.WELCOME_CHANNEL,  // Nom ou ID du canal de bienvenue récupéré depuis .env
     colors: {
         black: '#000000',
         red: '#FF0000',
@@ -44,7 +46,6 @@ const commands = [
             option.setName('sujet')
                 .setDescription('Sujet de l\'assemblée')
                 .setRequired(true)),
-
     new SlashCommandBuilder()
         .setName('vote')
         .setDescription('Lance un vote collectif')
@@ -56,7 +57,6 @@ const commands = [
             option.setName('duree')
                 .setDescription('Durée du vote en heures')
                 .setRequired(true)),
-
     new SlashCommandBuilder()
         .setName('sondage')
         .setDescription('Crée un sondage participatif')
@@ -68,11 +68,9 @@ const commands = [
             option.setName('options')
                 .setDescription('Options séparées par des virgules')
                 .setRequired(true)),
-
     new SlashCommandBuilder()
         .setName('manifeste')
         .setDescription('Affiche le manifeste de notre communauté'),
-
     new SlashCommandBuilder()
         .setName('entraide')
         .setDescription('Système d\'entraide mutuelle')
@@ -213,3 +211,7 @@ setInterval(() => {
 
 // Connexion du bot
 client.login(CONFIG.token);
+
+// Lancement d’un serveur web pour garder le bot actif sur le port défini
+app.get('/', (req, res) => res.send('Bot actif'));
+app.listen(CONFIG.port, () => console.log(`Serveur en écoute sur le port ${CONFIG.port}`));
