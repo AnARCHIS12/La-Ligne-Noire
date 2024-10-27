@@ -157,7 +157,7 @@ client.on('interactionCreate', async interaction => {
             const proposition = interaction.options.getString('proposition');
             const duree = interaction.options.getString('duree');
             const voteEmbed = new EmbedBuilder()
-                .setColor(CONFIG.colors.red)  // Couleur rouge pour l'embed de vote
+                .setColor(CONFIG.colors.red) // L'embed du vote est rouge
                 .setTitle(`${CONFIG.emojis.vote} Vote Collectif`)
                 .setDescription(`**Proposition:** ${proposition}\n**Durée:** ${duree} heures`)
                 .setTimestamp();
@@ -168,12 +168,12 @@ client.on('interactionCreate', async interaction => {
             setTimeout(async () => {
                 const fetchedMessage = await interaction.channel.messages.fetch(voteMessage.id);
                 const results = {
-                    pour: fetchedMessage.reactions.cache.get('✅') ? fetchedMessage.reactions.cache.get('✅').count - 1 : 0,
-                    contre: fetchedMessage.reactions.cache.get('❌') ? fetchedMessage.reactions.cache.get('❌').count - 1 : 0,
-                    abstention: fetchedMessage.reactions.cache.get('⚪') ? fetchedMessage.reactions.cache.get('⚪').count - 1 : 0
+                    pour: fetchedMessage.reactions.cache.get('✅')?.count - 1 || 0,
+                    contre: fetchedMessage.reactions.cache.get('❌')?.count - 1 || 0,
+                    abstention: fetchedMessage.reactions.cache.get('⚪')?.count - 1 || 0
                 };
                 const resultsEmbed = new EmbedBuilder()
-                    .setColor(CONFIG.colors.red)  // Couleur rouge pour les résultats
+                    .setColor(CONFIG.colors.red)
                     .setTitle(`${CONFIG.emojis.vote} Résultats du Vote`)
                     .setDescription(`✅ Pour: ${results.pour}\n❌ Contre: ${results.contre}\n⚪ Abstention: ${results.abstention}`)
                     .setTimestamp();
@@ -185,66 +185,50 @@ client.on('interactionCreate', async interaction => {
             const question = interaction.options.getString('question');
             const options = interaction.options.getString('options').split(',');
             const sondageEmbed = new EmbedBuilder()
-                .setColor(CONFIG.colors.gold)
-                .setTitle('📊 Sondage Participatif')
-                .setDescription(`**Question:** ${question}`)
+                .setColor(CONFIG.colors.red)
+                .setTitle(`${CONFIG.emojis.vote} Sondage Participatif`)
+                .setDescription(`**Question:** ${question}\n**Options:**\n${options.map((option, index) => `**${index + 1}**. ${option.trim()}`).join('\n')}`)
                 .setTimestamp();
-
-            // Envoi du message du sondage
             const sondageMessage = await interaction.reply({ embeds: [sondageEmbed], fetchReply: true });
-
-            // Ajout des réactions pour les options
             for (let i = 0; i < options.length; i++) {
-                const emoji = String.fromCodePoint(0x1F1E6 + i); // Emoji de A à Z
-                await sondageMessage.react(emoji);
+                await sondageMessage.react(`${i + 1}️⃣`);
             }
-
-            // Attendre les réactions pour chaque option
-            setTimeout(async () => {
-                const fetchedMessage = await interaction.channel.messages.fetch(sondageMessage.id);
-                const results = {};
-                options.forEach((option, index) => {
-                    const emoji = String.fromCodePoint(0x1F1E6 + index); // Emoji de A à Z
-                    results[option] = fetchedMessage.reactions.cache.get(emoji) ? fetchedMessage.reactions.cache.get(emoji).count - 1 : 0;
-                });
-
-                // Création d'un embed pour afficher les résultats
-                const resultsEmbed = new EmbedBuilder()
-                    .setColor(CONFIG.colors.gold)  // Couleur pour les résultats
-                    .setTitle('📊 Résultats du Sondage')
-                    .setDescription(`**Question:** ${question}`)
-                    .addFields(options.map((option, index) => ({
-                        name: `${String.fromCodePoint(0x1F1E6 + index)} ${option}`,
-                        value: `${results[option]} votes`,
-                        inline: true
-                    })))
-                    .setTimestamp();
-
-                interaction.channel.send({ embeds: [resultsEmbed] });
-            }, 60000);  // Durée pour collecter les votes (ex: 60 secondes)
-            break;
-
-        case 'manifeste':
-            await interaction.reply({ content: 'Nous croyons en une communication sans autorité, où les idées s\'épanouissent dans un environnement collaboratif.', ephemeral: true });
             break;
 
         case 'entraide':
             const type = interaction.options.getString('type');
             const description = interaction.options.getString('description');
             const entraideEmbed = new EmbedBuilder()
-                .setColor(CONFIG.colors.black)
-                .setTitle(`💬 Entraide Mutuelle - ${type}`)
-                .setDescription(`**Description:** ${description}`)
+                .setColor(CONFIG.colors.red)
+                .setTitle(`${CONFIG.emojis.solidarity} Réseau d'Entraide Mutuelle`)
+                .setDescription(`**Type:** ${type === 'offre' ? 'Offre d\'aide' : 'Demande d\'aide'}\n**Description:** ${description}`)
                 .setTimestamp();
-            await interaction.reply({ embeds: [entraideEmbed] });
+            const entraideMessage = await interaction.reply({ embeds: [entraideEmbed], fetchReply: true });
+            await entraideMessage.react(CONFIG.emojis.solidarity);
+            break;
+
+        case 'manifeste':
+            const manifesteEmbed = new EmbedBuilder()
+                .setColor(CONFIG.colors.black)
+                .setTitle(`${CONFIG.emojis.revolution} Manifeste de la Commune Numérique`)
+                .setDescription(`**Nos Principes Fondamentaux**\n1. **Autogestion**\n2. **Solidarité**\n3. **Action Directe**\n4. **Paix et Liberté**`)
+                .setTimestamp();
+            await interaction.reply({ embeds: [manifesteEmbed] });
             break;
     }
 });
 
-// Émission d'un ping régulier
-setInterval(() => {
-    console.log('Ping!');
-}, CONFIG.pingInterval);
-
-// Démarrer le bot
+// Démarrage du bot
 client.login(CONFIG.token);
+
+// Serveur Express pour garder le bot actif
+app.listen(CONFIG.port, () => {
+    console.log(`Serveur Express en cours d'exécution sur le port ${CONFIG.port}`);
+});
+
+// Ping pour garder le bot actif
+setInterval(() => {
+    client.guilds.fetch(CONFIG.guildId)
+        .then(guild => console.log(`Ping de la guilde ${guild.name}`))
+        .catch(console.error);
+}, CONFIG.pingInterval);
