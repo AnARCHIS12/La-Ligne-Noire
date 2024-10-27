@@ -3,13 +3,13 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder, REST, Routes, SlashCommandBuilder } = require('discord.js');
 
 // Initialisation du client
-const client = new Client({ 
+const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent
-    ] 
+    ]
 });
 
 // Configuration avec les variables d'environnement
@@ -17,6 +17,8 @@ const CONFIG = {
     token: process.env.DISCORD_TOKEN,
     clientId: process.env.CLIENT_ID,
     guildId: process.env.GUILD_ID,
+    port: process.env.BOT_PORT || 3000,  // Port par défaut à 3000 si non défini
+    welcomeChannel: process.env.WELCOME_CHANNEL || 'bienvenue',  // Nom ou ID du canal de bienvenue
     pingInterval: 300000,
     colors: {
         black: '#000000',
@@ -130,7 +132,12 @@ client.on('guildMemberAdd', member => {
         .setTimestamp()
         .setFooter({ text: 'No Gods, No Masters | Power to the People' });
 
-    member.guild.channels.cache.find(ch => ch.name === 'bienvenue').send({ embeds: [welcomeEmbed] });
+    const welcomeChannel = member.guild.channels.cache.find(ch => ch.name === CONFIG.welcomeChannel || ch.id === CONFIG.welcomeChannel);
+    if (welcomeChannel) {
+        welcomeChannel.send({ embeds: [welcomeEmbed] });
+    } else {
+        console.error("Le canal de bienvenue n'a pas été trouvé.");
+    }
 });
 
 // Gestion des interactions
@@ -199,7 +206,7 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// Système de ping
+// Système de ping pour vérifier l'activité du bot
 setInterval(() => {
     console.log(`${CONFIG.emojis.anarchist} Bot actif - ${new Date().toLocaleString()}`);
 }, CONFIG.pingInterval);
