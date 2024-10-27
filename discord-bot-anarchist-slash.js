@@ -215,20 +215,25 @@ client.on('interactionCreate', async interaction => {
                 .setTimestamp();
             await interaction.reply({ embeds: [manifesteEmbed] });
             break;
+
+        default:
+            await interaction.reply({ content: 'Commande inconnue.', ephemeral: true });
     }
 });
 
-// Démarrage du bot
+// Connexion du client
 client.login(CONFIG.token);
 
-// Serveur Express pour garder le bot actif
-app.listen(CONFIG.port, () => {
-    console.log(`Serveur Express en cours d'exécution sur le port ${CONFIG.port}`);
+// Mise en place d'un serveur express pour maintenir le bot en ligne
+app.get('/', (req, res) => {
+    res.send('Le bot est en ligne!');
 });
 
-// Ping pour garder le bot actif
+app.listen(CONFIG.port, () => {
+    console.log(`Le serveur est en ligne sur le port ${CONFIG.port}`);
+});
+
+// Pinger pour maintenir le bot en ligne
 setInterval(() => {
-    client.guilds.fetch(CONFIG.guildId)
-        .then(guild => console.log(`Ping de la guilde ${guild.name}`))
-        .catch(console.error);
+    console.log('Ping le bot pour le garder en ligne!');
 }, CONFIG.pingInterval);
