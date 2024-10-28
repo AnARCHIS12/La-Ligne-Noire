@@ -1,10 +1,10 @@
-// Import des modules
+//  Import des modules nécessaires
 require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder, REST, Routes, SlashCommandBuilder } = require('discord.js');
 const express = require('express');
-const app = express();
+const http = require('http');
 
-// Initialisation du client
+const app = express();
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -14,13 +14,13 @@ const client = new Client({
     ]
 });
 
-// Configuration avec les variables d'environnement
+//  Configuration avec les variables d'environnement
 const CONFIG = {
     token: process.env.DISCORD_TOKEN,
     clientId: process.env.CLIENT_ID,
     guildId: process.env.GUILD_ID,
     port: 3000,
-    pingInterval: 300000,
+    pingInterval: 300000, // $ Intervalle de 5 minutes pour ping interne et keep-alive
     welcomeChannel: process.env.WELCOME_CHANNEL,
     colors: {
         black: '#000000',
@@ -37,7 +37,7 @@ const CONFIG = {
     }
 };
 
-// Définition des commandes
+//  Définition des commandes Slash
 const commands = [
     new SlashCommandBuilder()
         .setName('assemblee')
@@ -88,7 +88,6 @@ const commands = [
                 .setRequired(true))
 ];
 
-// Déploiement des commandes
 const rest = new REST({ version: '10' }).setToken(CONFIG.token);
 
 (async () => {
@@ -104,14 +103,13 @@ const rest = new REST({ version: '10' }).setToken(CONFIG.token);
     }
 })();
 
-// Message de bienvenue
+//  Message de bienvenue
 client.on('guildMemberAdd', member => {
     const welcomeEmbed = new EmbedBuilder()
         .setColor(CONFIG.colors.black)
         .setTitle(`${CONFIG.emojis.anarchist} Bienvenue dans la Commune Libre!`)
         .setDescription(`
             **Salutations ${member.user.username}!**
-            
             Tu viens de rejoindre un espace d'autogestion et de liberté.
             
             ${CONFIG.emojis.solidarity} **Notre Vision:**
@@ -138,7 +136,7 @@ client.on('guildMemberAdd', member => {
     }
 });
 
-// Gestion des interactions
+// Gestion des interactions Slash Command
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
@@ -221,19 +219,19 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// Connexion du client
+//  Connexion du client Discord
 client.login(CONFIG.token);
 
-// Serveur Express pour maintenir le bot en ligne
+//  Serveur Express pour maintenir le bot en ligne
 app.get('/', (req, res) => {
     res.send('Le bot est en ligne!');
 });
 
 app.listen(CONFIG.port, () => {
-    console.log(`Le serveur est en ligne sur le port ${CONFIG.port}`);
+    console.log(`Serveur en ligne sur le port ${CONFIG.port}`);
 });
 
-// Système keep-alive pour vérifier et maintenir le bot actif
+// Système Keep-Alive pour surveiller le bot et le reconnecter si nécessaire
 function keepAlive() {
     setInterval(() => {
         if (client.ws.status !== 0) {
@@ -242,7 +240,24 @@ function keepAlive() {
         } else {
             console.log("Bot est toujours actif !");
         }
+    }, CONFIG.pingInterval); // Vérification toutes les 5 minutes
+}
+
+// Fonction de ping interne pour éviter la mise en veille de Render
+function internalPing() {
+    setInterval(() => {
+        http.get(`http://localhost:${CONFIG.port}`, (res) => {
+            console.log("Ping interne envoyé pour maintenir le bot actif.");
+        }).on('error', (e) => {
+            console.error(`Erreur lors du ping interne: ${e.message}`);
+        });
     }, CONFIG.pingInterval);
 }
 
-keepAlive(); // Démarrage de la fonction keep-alive pour surveiller l'activité du bot
+//  Démarrage de la fonction keep-alive et du ping interne
+client.once('ready', () => {
+    console.log(`Connecté en tant que ${client.user.tag}`);
+    keepAlive();
+    internalPing();
+});
+
