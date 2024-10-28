@@ -1,4 +1,4 @@
-//  Import des modules nécessaires
+// Import des modules nécessaires
 require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder, REST, Routes, SlashCommandBuilder } = require('discord.js');
 const express = require('express');
@@ -14,13 +14,13 @@ const client = new Client({
     ]
 });
 
-//  Configuration avec les variables d'environnement
+// Configuration avec les variables d'environnement
 const CONFIG = {
     token: process.env.DISCORD_TOKEN,
     clientId: process.env.CLIENT_ID,
     guildId: process.env.GUILD_ID,
     port: 3000,
-    pingInterval: 300000, // $ Intervalle de 5 minutes pour ping interne et keep-alive
+    pingInterval: 300000, // Intervalle de 5 minutes pour ping interne et keep-alive
     welcomeChannel: process.env.WELCOME_CHANNEL,
     colors: {
         black: '#000000',
@@ -37,7 +37,7 @@ const CONFIG = {
     }
 };
 
-//  Définition des commandes Slash
+// Définition des commandes Slash
 const commands = [
     new SlashCommandBuilder()
         .setName('assemblee')
@@ -90,20 +90,21 @@ const commands = [
 
 const rest = new REST({ version: '10' }).setToken(CONFIG.token);
 
+// Déploiement des commandes slash
 (async () => {
     try {
         console.log('Déploiement des commandes slash...');
         await rest.put(
             Routes.applicationGuildCommands(CONFIG.clientId, CONFIG.guildId),
-            { body: commands }
+            { body: commands.map(command => command.toJSON()) } // Convertir les commandes en JSON
         );
         console.log('Commandes slash déployées avec succès!');
     } catch (error) {
-        console.error(error);
+        console.error('Erreur lors du déploiement des commandes:', error);
     }
 })();
 
-//  Message de bienvenue
+// Message de bienvenue
 client.on('guildMemberAdd', member => {
     const welcomeEmbed = new EmbedBuilder()
         .setColor(CONFIG.colors.black)
@@ -219,10 +220,10 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-//  Connexion du client Discord
-client.login(CONFIG.token);
+// Connexion du client Discord
+client.login(CONFIG.token).catch(err => console.error('Erreur de connexion:', err));
 
-//  Serveur Express pour maintenir le bot en ligne
+// Serveur Express pour maintenir le bot en ligne
 app.get('/', (req, res) => {
     res.send('Le bot est en ligne!');
 });
@@ -236,7 +237,7 @@ function keepAlive() {
     setInterval(() => {
         if (client.ws.status !== 0) {
             console.log("Bot déconnecté. Tentative de reconnexion...");
-            client.login(CONFIG.token);
+            client.login(CONFIG.token).catch(err => console.error('Erreur lors de la reconnexion:', err));
         } else {
             console.log("Bot est toujours actif !");
         }
@@ -254,7 +255,7 @@ function internalPing() {
     }, CONFIG.pingInterval);
 }
 
-//  Démarrage de la fonction keep-alive et du ping interne
+// Démarrage de la fonction keep-alive et du ping interne
 client.once('ready', () => {
     console.log(`Connecté en tant que ${client.user.tag}`);
     keepAlive();
