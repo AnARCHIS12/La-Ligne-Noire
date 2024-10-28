@@ -19,9 +19,9 @@ const CONFIG = {
     token: process.env.DISCORD_TOKEN,
     clientId: process.env.CLIENT_ID,
     guildId: process.env.GUILD_ID,
-    port: 3000,  // Port fixé directement ici
+    port: 3000,
     pingInterval: 300000,
-    welcomeChannel: process.env.WELCOME_CHANNEL,  // Nom ou ID du canal de bienvenue récupéré depuis .env
+    welcomeChannel: process.env.WELCOME_CHANNEL,
     colors: {
         black: '#000000',
         red: '#FF0000',
@@ -157,7 +157,7 @@ client.on('interactionCreate', async interaction => {
             const proposition = interaction.options.getString('proposition');
             const duree = interaction.options.getString('duree');
             const voteEmbed = new EmbedBuilder()
-                .setColor(CONFIG.colors.red) // L'embed du vote est rouge
+                .setColor(CONFIG.colors.red)
                 .setTitle(`${CONFIG.emojis.vote} Vote Collectif`)
                 .setDescription(`**Proposition:** ${proposition}\n**Durée:** ${duree} heures`)
                 .setTimestamp();
@@ -224,7 +224,7 @@ client.on('interactionCreate', async interaction => {
 // Connexion du client
 client.login(CONFIG.token);
 
-// Mise en place d'un serveur express pour maintenir le bot en ligne
+// Serveur Express pour maintenir le bot en ligne
 app.get('/', (req, res) => {
     res.send('Le bot est en ligne!');
 });
@@ -233,7 +233,16 @@ app.listen(CONFIG.port, () => {
     console.log(`Le serveur est en ligne sur le port ${CONFIG.port}`);
 });
 
-// Pinger pour maintenir le bot en ligne
-setInterval(() => {
-    console.log('Ping le bot pour le garder en ligne!');
-}, CONFIG.pingInterval);
+// Système keep-alive pour vérifier et maintenir le bot actif
+function keepAlive() {
+    setInterval(() => {
+        if (client.ws.status !== 0) {
+            console.log("Bot déconnecté. Tentative de reconnexion...");
+            client.login(CONFIG.token);
+        } else {
+            console.log("Bot est toujours actif !");
+        }
+    }, CONFIG.pingInterval);
+}
+
+keepAlive(); // Démarrage de la fonction keep-alive pour surveiller l'activité du bot
