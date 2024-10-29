@@ -352,4 +352,34 @@ let keepAliveManager;
 
 // Connexion du client Discord et initialisation du Keep-Alive
 client.once('ready', () => {
-    console.log(`Connecté en tant que ${client.user
+    console.log(`Connecté en tant que ${client.user.tag}`);
+    keepAliveManager = new KeepAliveManager(client, CONFIG.port);
+    keepAliveManager.start();
+});
+
+// Gestion de la fermeture propre
+process.on('SIGINT', () => {
+    console.log('Arrêt du bot...');
+    if (keepAliveManager) {
+        keepAliveManager.stop();
+    }
+    if (server) {
+        server.close();
+    }
+    client.destroy();
+    process.exit(0);
+});
+
+// Gestion des erreurs non traitées
+process.on('unhandledRejection', (error) => {
+    console.error('Erreur non gérée:', error);
+    if (keepAliveManager) {
+        keepAliveManager.resetKeepAlive();
+    }
+});
+
+// Connexion du client Discord
+client.login(CONFIG.token).catch(err => {
+    console.error('Erreur de connexion:', err);
+    process.exit(1);
+});
