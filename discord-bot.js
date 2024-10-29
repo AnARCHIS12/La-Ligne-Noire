@@ -357,7 +357,7 @@ client.once('ready', () => {
 });
 
 // Connexion du bot
-client.login(CONFIG.token).catch(console.error);
-
-    process.exit(1);
+client.login(CONFIG.token).catch((error) => {
+    console.error('Erreur de connexion :', error);
+    process.exit(1); // Sortir du processus uniquement en cas d'erreur de connexion
 });
