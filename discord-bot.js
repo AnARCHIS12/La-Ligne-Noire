@@ -20,9 +20,9 @@ const CONFIG = {
     clientId: process.env.CLIENT_ID,
     guildId: process.env.GUILD_ID,
     port: 3000,
-    pingInterval: 300000, // 5 minutes
-    maxRetries: 3, // Nombre maximum de tentatives de reconnexion
-    retryDelay: 60000, // Délai entre les tentatives (1 minute)
+    pingInterval: 60000, // Ping toutes les minutes
+    maxRetries: 10, // Nombre maximum de tentatives de reconnexion
+    retryDelay: 30000, // Délai entre les tentatives (30 secondes)
     pingTimeout: 10000, // Timeout pour les requêtes ping (10 secondes)
     welcomeChannel: process.env.WELCOME_CHANNEL,
     colors: {
@@ -171,7 +171,7 @@ class KeepAliveManager {
 
     async handleReconnection() {
         if (this.reconnectAttempts >= CONFIG.maxRetries) {
-            console.error('Nombre maximum de tentatives de reconnexion atteint');
+            console.error('Nombre maximum de tentatives de reconnexion atteint. Réinitialisation du bot...');
             this.resetKeepAlive();
             return;
         }
@@ -243,7 +243,7 @@ client.on('guildMemberAdd', member => {
             • /entraide - Pour l'entraide mutuelle
             • /manifeste - Pour comprendre nos principes
         `)
-        .setImage('https://wallpapercave.com/wp/3JChxzg.jpg')
+        .setImage('https://cdn.discordapp.com/attachments/945325244762165278/1300779415499833344/Anarchist_flag.png?ex=672214bb&is=6720c33b&hm=45a3a45cd8b40ec4699d22304dd02318fdaa0cdbe0f4149a2486208c9bf3c6ab&')
         .setTimestamp()
         .setFooter({ text: 'No Gods, No Masters | Power to the People' });
 
@@ -348,38 +348,16 @@ const server = app.listen(CONFIG.port, () => {
 });
 
 // Instance du gestionnaire de Keep-Alive
-let keepAliveManager;
+let keepAliveManager = new KeepAliveManager(client, CONFIG.port);
 
 // Connexion du client Discord et initialisation du Keep-Alive
 client.once('ready', () => {
     console.log(`Connecté en tant que ${client.user.tag}`);
-    keepAliveManager = new KeepAliveManager(client, CONFIG.port);
     keepAliveManager.start();
 });
 
-// Gestion de la fermeture propre
-process.on('SIGINT', () => {
-    console.log('Arrêt du bot...');
-    if (keepAliveManager) {
-        keepAliveManager.stop();
-    }
-    if (server) {
-        server.close();
-    }
-    client.destroy();
-    process.exit(0);
-});
+// Connexion du bot
+client.login(CONFIG.token).catch(console.error);
 
-// Gestion des erreurs non traitées
-process.on('unhandledRejection', (error) => {
-    console.error('Erreur non gérée:', error);
-    if (keepAliveManager) {
-        keepAliveManager.resetKeepAlive();
-    }
-});
-
-// Connexion du client Discord
-client.login(CONFIG.token).catch(err => {
-    console.error('Erreur de connexion:', err);
     process.exit(1);
 });
