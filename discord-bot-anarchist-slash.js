@@ -1,10 +1,7 @@
 // Import des modules nécessaires
 require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder, REST, Routes, SlashCommandBuilder } = require('discord.js');
-const express = require('express');
-const http = require('http');
 
-const app = express();
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -19,8 +16,8 @@ const CONFIG = {
     token: process.env.DISCORD_TOKEN,
     clientId: process.env.CLIENT_ID,
     guildId: process.env.GUILD_ID,
-    port: 3000,
-    pingInterval: 300000, // Intervalle de 5 minutes pour ping interne et keep-alive
+    maxRetries: 3, // Nombre maximum de tentatives de reconnexion
+    retryDelay: 60000, // Délai entre les tentatives (1 minute)
     welcomeChannel: process.env.WELCOME_CHANNEL,
     colors: {
         black: '#000000',
@@ -37,7 +34,7 @@ const CONFIG = {
     }
 };
 
-// Définition des commandes Slash
+// Définition des commandes Slash avec les nouvelles fonctionnalités
 const commands = [
     new SlashCommandBuilder()
         .setName('assemblee')
@@ -85,7 +82,21 @@ const commands = [
         .addStringOption(option =>
             option.setName('description')
                 .setDescription('Description de l\'entraide')
+                .setRequired(true)),
+    new SlashCommandBuilder()
+        .setName('rappel')
+        .setDescription('Programmer un rappel')
+        .addStringOption(option =>
+            option.setName('message')
+                .setDescription('Message de rappel')
                 .setRequired(true))
+        .addIntegerOption(option =>
+            option.setName('delai')
+                .setDescription('Délai en minutes avant le rappel')
+                .setRequired(true)),
+    new SlashCommandBuilder()
+        .setName('aide')
+        .setDescription('Affiche toutes les commandes disponibles')
 ];
 
 const rest = new REST({ version: '10' }).setToken(CONFIG.token);
@@ -96,46 +107,13 @@ const rest = new REST({ version: '10' }).setToken(CONFIG.token);
         console.log('Déploiement des commandes slash...');
         await rest.put(
             Routes.applicationGuildCommands(CONFIG.clientId, CONFIG.guildId),
-            { body: commands.map(command => command.toJSON()) } // Convertir les commandes en JSON
+            { body: commands.map(command => command.toJSON()) }
         );
         console.log('Commandes slash déployées avec succès!');
     } catch (error) {
         console.error('Erreur lors du déploiement des commandes:', error);
     }
 })();
-
-// Message de bienvenue
-client.on('guildMemberAdd', member => {
-    const welcomeEmbed = new EmbedBuilder()
-        .setColor(CONFIG.colors.black)
-        .setTitle(`${CONFIG.emojis.anarchist} Bienvenue dans la Commune Libre!`)
-        .setDescription(`
-            **Salutations ${member.user.username}!**
-            Tu viens de rejoindre un espace d'autogestion et de liberté.
-            
-            ${CONFIG.emojis.solidarity} **Notre Vision:**
-            • Démocratie directe et participative
-            • Entraide mutuelle et solidarité
-            • Organisation horizontale
-            • Action directe et autonomie
-            
-            ${CONFIG.emojis.revolution} **Participe à la vie collective:**
-            • /assemblee - Pour créer une assemblée
-            • /vote - Pour les décisions collectives
-            • /entraide - Pour l'entraide mutuelle
-            • /manifeste - Pour comprendre nos principes
-        `)
-        .setImage('https://wallpapercave.com/wp/3JChxzg.jpg')
-        .setTimestamp()
-        .setFooter({ text: 'No Gods, No Masters | Power to the People' });
-
-    const welcomeChannel = member.guild.channels.cache.find(ch => ch.name === CONFIG.welcomeChannel || ch.id === CONFIG.welcomeChannel);
-    if (welcomeChannel) {
-        welcomeChannel.send({ embeds: [welcomeEmbed] });
-    } else {
-        console.error("Le canal de bienvenue n'a pas été trouvé.");
-    }
-});
 
 // Gestion des interactions Slash Command
 client.on('interactionCreate', async interaction => {
@@ -154,30 +132,42 @@ client.on('interactionCreate', async interaction => {
 
         case 'vote':
             const proposition = interaction.options.getString('proposition');
-            const duree = interaction.options.getString('duree');
+            const duree = parseInt(interaction.options.getString('duree')) * 3600000;
             const voteEmbed = new EmbedBuilder()
                 .setColor(CONFIG.colors.red)
                 .setTitle(`${CONFIG.emojis.vote} Vote Collectif`)
-                .setDescription(`**Proposition:** ${proposition}\n**Durée:** ${duree} heures`)
+                .setDescription(`**Proposition:** ${proposition}\n**Durée:** ${duree / 3600000} heures`)
                 .setTimestamp();
             const voteMessage = await interaction.reply({ embeds: [voteEmbed], fetchReply: true });
             await voteMessage.react('✅');
             await voteMessage.react('❌');
             await voteMessage.react('⚪');
-            setTimeout(async () => {
-                const fetchedMessage = await interaction.channel.messages.fetch(voteMessage.id);
+
+            // Intervalle pour mise à jour des résultats
+            const updateInterval = setInterval(async () => {
+                const updatedMessage = await interaction.channel.messages.fetch(voteMessage.id);
                 const results = {
-                    pour: fetchedMessage.reactions.cache.get('✅')?.count - 1 || 0,
-                    contre: fetchedMessage.reactions.cache.get('❌')?.count - 1 || 0,
-                    abstention: fetchedMessage.reactions.cache.get('⚪')?.count - 1 || 0
+                    pour: updatedMessage.reactions.cache.get('✅')?.count - 1 || 0,
+                    contre: updatedMessage.reactions.cache.get('❌')?.count - 1 || 0,
+                    abstention: updatedMessage.reactions.cache.get('⚪')?.count - 1 || 0
                 };
                 const resultsEmbed = new EmbedBuilder()
                     .setColor(CONFIG.colors.red)
-                    .setTitle(`${CONFIG.emojis.vote} Résultats du Vote`)
+                    .setTitle(`${CONFIG.emojis.vote} Mise à jour du Vote`)
                     .setDescription(`✅ Pour: ${results.pour}\n❌ Contre: ${results.contre}\n⚪ Abstention: ${results.abstention}`)
                     .setTimestamp();
-                interaction.channel.send({ embeds: [resultsEmbed] });
-            }, parseInt(duree) * 3600000);
+                await interaction.followUp({ embeds: [resultsEmbed] });
+            }, 60000); // Mise à jour toutes les minutes
+
+            setTimeout(() => {
+                clearInterval(updateInterval);
+                const finalEmbed = new EmbedBuilder()
+                    .setColor(CONFIG.colors.red)
+                    .setTitle(`${CONFIG.emojis.vote} Résultats du Vote Final`)
+                    .setDescription(`✅ Pour: ${results.pour}\n❌ Contre: ${results.contre}\n⚪ Abstention: ${results.abstention}`)
+                    .setTimestamp();
+                interaction.channel.send({ embeds: [finalEmbed] });
+            }, duree);
             break;
 
         case 'sondage':
@@ -189,8 +179,9 @@ client.on('interactionCreate', async interaction => {
                 .setDescription(`**Question:** ${question}\n**Options:**\n${options.map((option, index) => `**${index + 1}**. ${option.trim()}`).join('\n')}`)
                 .setTimestamp();
             const sondageMessage = await interaction.reply({ embeds: [sondageEmbed], fetchReply: true });
-            for (let i = 0; i < options.length; i++) {
-                await sondageMessage.react(`${i + 1}️⃣`);
+            const emojiNumbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+            for (let i = 0; i < options.length && i < 10; i++) {
+                await sondageMessage.react(emojiNumbers[i]);
             }
             break;
 
@@ -206,13 +197,30 @@ client.on('interactionCreate', async interaction => {
             await entraideMessage.react(CONFIG.emojis.solidarity);
             break;
 
-        case 'manifeste':
-            const manifesteEmbed = new EmbedBuilder()
-                .setColor(CONFIG.colors.black)
-                .setTitle(`${CONFIG.emojis.revolution} Manifeste de la Commune Numérique`)
-                .setDescription(`**Nos Principes Fondamentaux**\n1. **Autogestion**\n2. **Solidarité**\n3. **Action Directe**\n4. **Paix et Liberté**`)
+        case 'rappel':
+            const rappelMessage = interaction.options.getString('message');
+            const delai = interaction.options.getInteger('delai') * 60000;
+            await interaction.reply(`Rappel programmé dans ${delai / 60000} minutes : "${rappelMessage}"`);
+            setTimeout(() => {
+                interaction.followUp(`${interaction.user}, voici votre rappel : ${rappelMessage}`);
+            }, delai);
+            break;
+
+        case 'aide':
+            const helpEmbed = new EmbedBuilder()
+                .setColor(CONFIG.colors.gold)
+                .setTitle('Liste des Commandes')
+                .setDescription('Voici toutes les commandes disponibles dans ce bot :')
+                .addFields(
+                    { name: '/assemblee', value: 'Crée une nouvelle assemblée populaire' },
+                    { name: '/vote', value: 'Lance un vote collectif' },
+                    { name: '/sondage', value: 'Crée un sondage participatif' },
+                    { name: '/manifeste', value: 'Affiche le manifeste de notre communauté' },
+                    { name: '/entraide', value: 'Système d\'entraide mutuelle' },
+                    { name: '/rappel', value: 'Programme un rappel personnel' }
+                )
                 .setTimestamp();
-            await interaction.reply({ embeds: [manifesteEmbed] });
+            await interaction.reply({ embeds: [helpEmbed] });
             break;
 
         default:
@@ -221,44 +229,9 @@ client.on('interactionCreate', async interaction => {
 });
 
 // Connexion du client Discord
-client.login(CONFIG.token).catch(err => console.error('Erreur de connexion:', err));
-
-// Serveur Express pour maintenir le bot en ligne
-app.get('/', (req, res) => {
-    res.send('Le bot est en ligne!');
-});
-
-app.listen(CONFIG.port, () => {
-    console.log(`Serveur en ligne sur le port ${CONFIG.port}`);
-});
-
-// Système Keep-Alive pour surveiller le bot et le reconnecter si nécessaire
-function keepAlive() {
-    setInterval(() => {
-        if (client.ws.status !== 0) {
-            console.log("Bot déconnecté. Tentative de reconnexion...");
-            client.login(CONFIG.token).catch(err => console.error('Erreur lors de la reconnexion:', err));
-        } else {
-            console.log("Bot est toujours actif !");
-        }
-    }, CONFIG.pingInterval); // Vérification toutes les 5 minutes
-}
-
-// Fonction de ping interne pour éviter la mise en veille de Render
-function internalPing() {
-    setInterval(() => {
-        http.get(`http://localhost:${CONFIG.port}`, (res) => {
-            console.log("Ping interne envoyé pour maintenir le bot actif.");
-        }).on('error', (e) => {
-            console.error(`Erreur lors du ping interne: ${e.message}`);
-        });
-    }, CONFIG.pingInterval);
-}
-
-// Démarrage de la fonction keep-alive et du ping interne
 client.once('ready', () => {
     console.log(`Connecté en tant que ${client.user.tag}`);
-    keepAlive();
-    internalPing();
 });
+
+client.login(CONFIG.token);
 
