@@ -236,28 +236,24 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// Connexion du bot
 client.login(CONFIG.token)
     .then(() => {
         console.log('Bot connecté avec succès!');
-
-        // Vérifiez si client.user est défini avant de définir le statut et l'activité
-        if (client.user) {
-            // Mettre le statut du bot
-            client.user.setStatus('online')
-                .then(() => console.log('Statut défini sur "en ligne".'))
-                .catch(error => console.error('Erreur lors de la définition du statut:', error));
-
-            // Définir l'activité du bot
-            client.user.setActivity('discuter des idées anarchistes', { type: 'WATCHING' })
-                .then(() => console.log('Activité définie.'))
-                .catch(error => console.error('Erreur lors de la définition de l\'activité:', error));
-        } else {
-            console.error('client.user est indéfini, statut et activité non définis.');
-        }
-
-        keepAlive(); // Appel de la fonction pour maintenir le bot en ligne
     })
     .catch(error => {
         console.error('Erreur de connexion:', error);
     });
+
+client.on('ready', () => {
+    console.log('Le bot est prêt!');
+    client.user.setStatus('online')
+        .then(() => console.log('Statut défini sur "en ligne".'))
+        .catch(error => console.error('Erreur lors de la définition du statut:', error));
+
+    client.user.setActivity('discuter des idées anarchistes', { type: 'WATCHING' })
+        .then(() => console.log('Activité définie.'))
+        .catch(error => console.error('Erreur lors de la définition de l\'activité:', error));
+
+    keepAlive(); // Appel de la fonction pour maintenir le bot en ligne
+});
+
