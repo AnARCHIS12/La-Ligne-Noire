@@ -117,14 +117,14 @@ const rest = new REST({ version: '10' }).setToken(CONFIG.token);
 client.on('guildMemberAdd', async member => {
     console.log(`Nouveau membre ajouté : ${member.user.username}`); // Log pour vérifier l'ajout d'un membre
     
-    // Utiliser l'ID du canal de bienvenue en clair
     const welcomeChannelId = '945325244346949696';
     console.log(`ID du canal de bienvenue : ${welcomeChannelId}`);
     
     const channel = client.channels.cache.get(welcomeChannelId);
     
-    // Log pour vérifier si le canal a été trouvé
+    // Log pour vérifier si le canal a été trouvé et son type
     console.log(`Canal trouvé : ${channel ? channel.name : 'Aucun canal trouvé'}`);
+    console.log(`Type de canal : ${channel ? channel.type : 'Aucun canal trouvé'}`);
 
     // Vérification si le canal existe et s'il s'agit d'un canal de texte
     if (!channel || channel.type !== 'GUILD_TEXT') {
@@ -148,6 +148,7 @@ client.on('guildMemberAdd', async member => {
     await channel.send({ embeds: [welcomeEmbed] });
     console.log('Message de bienvenue envoyé avec succès !'); // Log de confirmation d'envoi
 });
+
 
 
 // Gestion des interactions Slash Command
