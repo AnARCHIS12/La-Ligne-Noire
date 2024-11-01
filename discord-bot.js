@@ -139,7 +139,6 @@ client.on('guildMemberAdd', async member => {
     console.log('Message de bienvenue envoyé avec succès !'); // Log de confirmation d'envoi
 });
 
-
 // Gestion des interactions Slash Command
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
@@ -196,7 +195,7 @@ client.on('interactionCreate', async interaction => {
 
         case 'aide':
             const helpEmbed = new EmbedBuilder()
-                .setColor(CONFIG.colors.gold)
+                .setColor(CONFIG.colors.red) // Changer la couleur en rouge
                 .setTitle('Liste des Commandes')
                 .setDescription('Voici toutes les commandes disponibles dans ce bot :')
                 .addFields(
@@ -214,11 +213,13 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// Connexion du client Discord et démarrage de la fonction anti-veille
-client.once('ready', () => {
-    console.log(`Connecté en tant que ${client.user.tag}`);
-    keepAlive(); // Démarre la fonction anti-veille pour maintenir le bot en ligne
-});
+// Connexion du bot
+client.login(CONFIG.token)
+    .then(() => {
+        console.log('Bot connecté avec succès!');
+        keepAlive(); // Appel de la fonction pour maintenir le bot en ligne
+    })
+    .catch(error => {
+        console.error('Erreur de connexion:', error);
+    });
 
-// Connexion du bot avec le token
-client.login(CONFIG.token);
