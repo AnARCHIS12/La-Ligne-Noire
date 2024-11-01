@@ -1,8 +1,8 @@
 {
-  "name": "ligne-noire-",
+  "name": "la-ligne-noire-main",
   "version": "1.0.0",
   "description": "",
-  "main": "discord-bot-anarchist-slash.js",
+  "main": "discord-bot.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
