@@ -241,13 +241,18 @@ client.login(CONFIG.token)
     .then(() => {
         console.log('Bot connecté avec succès!');
 
-        // Mettre le statut du bot
-        client.user.setStatus('online')
-            .catch(error => console.error('Erreur lors de la définition du statut:', error));
+        // Vérifiez si client.user est défini avant de définir le statut et l'activité
+        if (client.user) {
+            // Mettre le statut du bot
+            client.user.setStatus('online');
+            console.log('Statut défini sur "en ligne".');
 
-        // Définir l'activité du bot
-        client.user.setActivity('discuter des idées anarchistes', { type: 'WATCHING' })
-            .catch(error => console.error('Erreur lors de la définition de l\'activité:', error));
+            // Définir l'activité du bot
+            client.user.setActivity('discuter des idées anarchistes', { type: 'WATCHING' });
+            console.log('Activité définie.');
+        } else {
+            console.error('client.user est indéfini, statut et activité non définis.');
+        }
 
         keepAlive(); // Appel de la fonction pour maintenir le bot en ligne
     })
