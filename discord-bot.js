@@ -115,39 +115,47 @@ const rest = new REST({ version: '10' }).setToken(CONFIG.token);
 })();
 
 client.on('guildMemberAdd', async member => {
-    console.log(`Nouveau membre ajouté : ${member.user.username}`); // Log pour vérifier l'ajout d'un membre
-    
     const welcomeChannelId = '945325244346949696';
-    console.log(`ID du canal de bienvenue : ${welcomeChannelId}`);
-    
     const channel = client.channels.cache.get(welcomeChannelId);
-    
-    // Log pour vérifier si le canal a été trouvé et son type
-    console.log(`Canal trouvé : ${channel ? channel.name : 'Aucun canal trouvé'}`);
-    console.log(`Type de canal : ${channel ? channel.type : 'Aucun canal trouvé'}`);
 
-    // Vérification si le canal existe et s'il s'agit d'un canal de texte
-    if (!channel || channel.type !== 'GUILD_TEXT') {
-        console.log('Chaîne de bienvenue introuvable ou pas de type texte.'); // Log si le canal n'est pas trouvé
+    console.log(`Canal trouvé : ${channel ? channel.name : 'Inconnu'}`);
+    console.log(`Type de canal : ${channel ? channel.type : 'Inconnu'}`);
+
+    // Vérification que le canal existe et est un canal de texte
+    if (!channel) {
+        console.log('Canal introuvable.');
         return; 
     }
 
-    // Récupérer l'URL de l'avatar de l'utilisateur
-    const avatarURL = member.user.displayAvatarURL({ dynamic: true });
+    // Vérifiez si le type de canal est un canal de texte
+    if (channel.type !== 'GUILD_TEXT') {
+        console.log('Chaîne de bienvenue introuvable ou pas de type texte.');
+        return; 
+    }
 
-    // Créer un embed pour le message de bienvenue
+    // Vérification des permissions
+    const permissions = channel.permissionsFor(member.guild.me);
+    console.log(`Permissions du bot dans le canal : ${permissions.toArray()}`);
+
+    if (!permissions.has('SEND_MESSAGES')) {
+        console.log('Le bot n\'a pas la permission d\'envoyer des messages dans ce canal.');
+        return; 
+    }
+
+    // Continuez avec le message de bienvenue si le canal est valide
+    const avatarURL = member.user.displayAvatarURL({ dynamic: true });
     const welcomeEmbed = new EmbedBuilder()
         .setColor(CONFIG.colors.green)
-        .setTitle(`${CONFIG.emojis.freedom} Bienvenue, ${member.user.username} !`)
-        .setDescription(`Nous sommes ravis de t'accueillir dans notre espace anarchiste ! ${CONFIG.emojis.solidarity}`)
+        .setTitle(`Bienvenue, ${member.user.username} !`)
+        .setDescription('Nous sommes ravis de t\'accueillir dans notre espace anarchiste !')
         .setThumbnail(avatarURL)
         .setFooter({ text: 'Ici, nous croyons en une communication sans autorité.' })
         .setTimestamp();
 
-    // Envoyer le message de bienvenue
     await channel.send({ embeds: [welcomeEmbed] });
-    console.log('Message de bienvenue envoyé avec succès !'); // Log de confirmation d'envoi
+    console.log('Message de bienvenue envoyé avec succès !');
 });
+
 
 
 
