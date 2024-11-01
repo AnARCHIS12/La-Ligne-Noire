@@ -121,13 +121,12 @@ client.on('guildMemberAdd', async member => {
     console.log(`Canal trouvé : ${channel ? channel.name : 'Inconnu'}`);
     console.log(`Type de canal : ${channel ? channel.type : 'Inconnu'}`);
 
-    // Vérification que le canal existe et est un canal de texte
     if (!channel) {
         console.log('Canal introuvable.');
         return; 
     }
 
-    // Vérifiez si le type de canal est un canal de texte
+    // Vérifiez le type de canal
     if (channel.type !== 'GUILD_TEXT') {
         console.log('Chaîne de bienvenue introuvable ou pas de type texte.');
         return; 
@@ -140,6 +139,14 @@ client.on('guildMemberAdd', async member => {
     if (!permissions.has('SEND_MESSAGES')) {
         console.log('Le bot n\'a pas la permission d\'envoyer des messages dans ce canal.');
         return; 
+    }
+
+    // Test d'envoi d'un message
+    try {
+        await channel.send('Test du bot !');
+        console.log('Message de test envoyé avec succès !');
+    } catch (error) {
+        console.log(`Erreur lors de l'envoi du message de test : ${error.message}`);
     }
 
     // Continuez avec le message de bienvenue si le canal est valide
@@ -155,6 +162,7 @@ client.on('guildMemberAdd', async member => {
     await channel.send({ embeds: [welcomeEmbed] });
     console.log('Message de bienvenue envoyé avec succès !');
 });
+
 
 
 
