@@ -19,18 +19,21 @@ const CONFIG = {
     token: process.env.TOKEN,
     clientId: process.env.CLIENT_ID,
     guildId: process.env.GUILD_ID,
+    welcomeChannelId: process.env.WELCOME_CHANNEL_ID, // ID du salon de bienvenue
     colors: {
         black: '#000000',
         red: '#FF0000',
-        gold: '#FFD700'
+        gold: '#FFD700',
+        green: '#00FF00'
     },
     emojis: {
         anarchist: 'Ⓐ',
-        solidarity: '✨',
+        solidarity: '✊',
         revolution: '⚔️',
-        peace: '🕊️',
+        peace: '☮️',
         vote: '📊',
-        assembly: '🏛️'
+        assembly: '🏛️',
+        freedom: '🕊️'
     }
 };
 
@@ -110,6 +113,27 @@ const rest = new REST({ version: '10' }).setToken(CONFIG.token);
         console.error('Erreur lors du déploiement des commandes:', error);
     }
 })();
+
+// Événement lorsque un membre rejoint le serveur
+client.on('guildMemberAdd', async member => {
+    const channel = client.channels.cache.get(CONFIG.welcomeChannelId);
+    if (!channel || !channel.isText()) return; // Vérifiez que le salon est de type texte
+
+    // Récupérer l'URL de l'avatar de l'utilisateur
+    const avatarURL = member.user.displayAvatarURL({ dynamic: true });
+
+    // Créer un embed pour le message de bienvenue
+    const welcomeEmbed = new EmbedBuilder()
+        .setColor(CONFIG.colors.green)
+        .setTitle(`${CONFIG.emojis.freedom} Bienvenue, ${member.user.username} !`)
+        .setDescription(`Nous sommes ravis de t'accueillir dans notre espace anarchiste ! ${CONFIG.emojis.solidarity}`)
+        .setThumbnail(avatarURL) // Ajout de l'avatar en tant que miniature
+        .setFooter({ text: 'Ici, nous croyons en une communication sans autorité.' })
+        .setTimestamp();
+
+    // Envoyer le message de bienvenue
+    await channel.send({ embeds: [welcomeEmbed] });
+});
 
 // Gestion des interactions Slash Command
 client.on('interactionCreate', async interaction => {
@@ -191,4 +215,5 @@ client.once('ready', () => {
     keepAlive(); // Démarre la fonction anti-veille pour maintenir le bot en ligne
 });
 
+// Connexion du bot avec le token
 client.login(CONFIG.token);
