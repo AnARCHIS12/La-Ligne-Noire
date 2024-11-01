@@ -243,12 +243,10 @@ client.login(CONFIG.token)
 
         // Mettre le statut du bot
         client.user.setStatus('online')
-            .then(() => console.log('Statut défini sur "en ligne".'))
             .catch(error => console.error('Erreur lors de la définition du statut:', error));
 
         // Définir l'activité du bot
         client.user.setActivity('discuter des idées anarchistes', { type: 'WATCHING' })
-            .then(() => console.log('Activité définie.'))
             .catch(error => console.error('Erreur lors de la définition de l\'activité:', error));
 
         keepAlive(); // Appel de la fonction pour maintenir le bot en ligne
@@ -256,3 +254,4 @@ client.login(CONFIG.token)
     .catch(error => {
         console.error('Erreur de connexion:', error);
     });
+
