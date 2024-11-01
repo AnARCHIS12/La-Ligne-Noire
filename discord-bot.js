@@ -246,14 +246,20 @@ client.login(CONFIG.token)
 
 client.on('ready', () => {
     console.log('Le bot est prêt!');
-    client.user.setStatus('online')
-        .then(() => console.log('Statut défini sur "en ligne".'))
-        .catch(error => console.error('Erreur lors de la définition du statut:', error));
 
-    client.user.setActivity('discuter des idées anarchistes', { type: 'WATCHING' })
-        .then(() => console.log('Activité définie.'))
-        .catch(error => console.error('Erreur lors de la définition de l\'activité:', error));
+    try {
+        // Mettre le statut du bot
+        client.user.setStatus('online');  // Plus besoin de .then() ici
+        console.log('Statut défini sur "en ligne".');
+
+        // Définir l'activité du bot
+        client.user.setActivity('discuter des idées anarchistes', { type: 'WATCHING' });  // Plus besoin de .then() ici
+        console.log('Activité définie.');
+    } catch (error) {
+        console.error('Erreur lors de la définition du statut ou de l\'activité:', error);
+    }
 
     keepAlive(); // Appel de la fonction pour maintenir le bot en ligne
 });
+
 
