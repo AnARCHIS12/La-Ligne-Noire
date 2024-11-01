@@ -115,16 +115,23 @@ const rest = new REST({ version: '10' }).setToken(CONFIG.token);
 })();
 
 client.on('guildMemberAdd', async (member) => {
-    const welcomeChannelId = CONFIG.welcomeChannelId; // Utiliser la variable de configuration
-    const channel = member.guild.channels.cache.get(welcomeChannelId); 
+    // Vérifier si le membre et son guild sont définis
+    if (!member || !member.guild) {
+        console.error('Membre ou guild non défini.');
+        return;
+    }
 
+    const welcomeChannelId = CONFIG.welcomeChannelId; // Utiliser la variable de configuration
+    const channel = member.guild.channels.cache.get(welcomeChannelId);
+
+    // Vérifier si le canal existe et s'il s'agit d'un canal de texte
     if (!channel || channel.type !== ChannelType.GuildText) {
         console.log('Chaîne de bienvenue introuvable ou pas de type texte.');
         return;
     }
 
-    // Vérifier si le bot a la permission d'envoyer des messages
-    const botMember = member.guild.members.cache.get(member.guild.me.id);
+    // Vérifier si le bot est dans le guild
+    const botMember = member.guild.members.me; // Utiliser `members.me` pour obtenir le bot
     if (!botMember || !channel.permissionsFor(botMember).has('SendMessages')) {
         console.log('Le bot n\'a pas la permission d\'envoyer des messages dans ce canal.');
         return;
@@ -148,6 +155,7 @@ client.on('guildMemberAdd', async (member) => {
         console.error(`Erreur lors de l'envoi du message de bienvenue : ${error.message}`);
     }
 });
+
 
 
 
