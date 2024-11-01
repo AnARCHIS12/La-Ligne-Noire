@@ -117,7 +117,9 @@ const rest = new REST({ version: '10' }).setToken(CONFIG.token);
 client.on('guildMemberAdd', async member => {
     console.log(`Nouveau membre ajouté : ${member.user.username}`); // Ajout de log pour vérifier l'ajout d'un membre
     const channel = client.channels.cache.get(CONFIG.welcomeChannelId);
-    if (!channel || !channel.isText()) {
+    
+    // Vérification si le canal existe et s'il s'agit d'un canal de texte
+    if (!channel || channel.type !== 'GUILD_TEXT') {
         console.log('Chaîne de bienvenue introuvable ou pas de type texte.'); // Ajout de log pour vérifier la chaîne
         return; 
     }
