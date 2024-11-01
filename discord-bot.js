@@ -114,42 +114,23 @@ const rest = new REST({ version: '10' }).setToken(CONFIG.token);
     }
 })();
 
-client.on('guildMemberAdd', async member => {
-    const welcomeChannelId = '945325244346949696';
-    const channel = client.channels.cache.get(welcomeChannelId);
+client.on('guildMemberAdd', async (member) => {
+    const welcomeChannelId = '945325244346949696'; // ID du canal de bienvenue
+    const channel = member.guild.channels.cache.get(welcomeChannelId); // Récupérer le canal par ID
 
-    console.log(`Canal trouvé : ${channel ? channel.name : 'Inconnu'}`);
-    console.log(`Type de canal : ${channel ? channel.type : 'Inconnu'}`);
-
-    if (!channel) {
-        console.log('Canal introuvable.');
-        return; 
-    }
-
-    // Vérifiez le type de canal
-    if (channel.type !== 'GUILD_TEXT') {
+    if (!channel || channel.type !== 'GUILD_TEXT') {
         console.log('Chaîne de bienvenue introuvable ou pas de type texte.');
-        return; 
+        return; // Sortir si le canal n'est pas trouvé ou n'est pas de type texte
     }
 
-    // Vérification des permissions
+    // Vérifier si le bot a la permission d'envoyer des messages
     const permissions = channel.permissionsFor(member.guild.me);
-    console.log(`Permissions du bot dans le canal : ${permissions.toArray()}`);
-
     if (!permissions.has('SEND_MESSAGES')) {
         console.log('Le bot n\'a pas la permission d\'envoyer des messages dans ce canal.');
-        return; 
+        return; // Sortir si le bot n'a pas la permission
     }
 
-    // Test d'envoi d'un message
-    try {
-        await channel.send('Test du bot !');
-        console.log('Message de test envoyé avec succès !');
-    } catch (error) {
-        console.log(`Erreur lors de l'envoi du message de test : ${error.message}`);
-    }
-
-    // Continuez avec le message de bienvenue si le canal est valide
+    // Créer un message de bienvenue
     const avatarURL = member.user.displayAvatarURL({ dynamic: true });
     const welcomeEmbed = new EmbedBuilder()
         .setColor(CONFIG.colors.green)
@@ -159,9 +140,15 @@ client.on('guildMemberAdd', async member => {
         .setFooter({ text: 'Ici, nous croyons en une communication sans autorité.' })
         .setTimestamp();
 
-    await channel.send({ embeds: [welcomeEmbed] });
-    console.log('Message de bienvenue envoyé avec succès !');
+    // Envoyer le message de bienvenue
+    try {
+        await channel.send({ embeds: [welcomeEmbed] });
+        console.log('Message de bienvenue envoyé avec succès !');
+    } catch (error) {
+        console.error(`Erreur lors de l'envoi du message de bienvenue : ${error.message}`);
+    }
 });
+
 
 
 
