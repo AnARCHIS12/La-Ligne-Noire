@@ -124,8 +124,8 @@ client.on('guildMemberAdd', async (member) => {
     }
 
     // Vérifier si le bot a la permission d'envoyer des messages
-    const permissions = channel.permissionsFor(member.guild.me);
-    if (!permissions.has('SendMessages')) {
+    const botMember = member.guild.members.cache.get(member.guild.me.id);
+    if (!botMember || !channel.permissionsFor(botMember).has('SendMessages')) {
         console.log('Le bot n\'a pas la permission d\'envoyer des messages dans ce canal.');
         return;
     }
