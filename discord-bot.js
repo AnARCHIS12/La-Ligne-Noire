@@ -114,10 +114,13 @@ const rest = new REST({ version: '10' }).setToken(CONFIG.token);
     }
 })();
 
-// Événement lorsque un membre rejoint le serveur
 client.on('guildMemberAdd', async member => {
+    console.log(`Nouveau membre ajouté : ${member.user.username}`); // Ajout de log pour vérifier l'ajout d'un membre
     const channel = client.channels.cache.get(CONFIG.welcomeChannelId);
-    if (!channel || !channel.isText()) return; // Vérifiez que le salon est de type texte
+    if (!channel || !channel.isText()) {
+        console.log('Chaîne de bienvenue introuvable ou pas de type texte.'); // Ajout de log pour vérifier la chaîne
+        return; 
+    }
 
     // Récupérer l'URL de l'avatar de l'utilisateur
     const avatarURL = member.user.displayAvatarURL({ dynamic: true });
@@ -127,13 +130,15 @@ client.on('guildMemberAdd', async member => {
         .setColor(CONFIG.colors.green)
         .setTitle(`${CONFIG.emojis.freedom} Bienvenue, ${member.user.username} !`)
         .setDescription(`Nous sommes ravis de t'accueillir dans notre espace anarchiste ! ${CONFIG.emojis.solidarity}`)
-        .setThumbnail(avatarURL) // Ajout de l'avatar en tant que miniature
+        .setThumbnail(avatarURL)
         .setFooter({ text: 'Ici, nous croyons en une communication sans autorité.' })
         .setTimestamp();
 
     // Envoyer le message de bienvenue
     await channel.send({ embeds: [welcomeEmbed] });
+    console.log('Message de bienvenue envoyé avec succès !'); // Log de confirmation d'envoi
 });
+
 
 // Gestion des interactions Slash Command
 client.on('interactionCreate', async interaction => {
