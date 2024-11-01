@@ -1,6 +1,6 @@
 // Import des modules nécessaires et configuration du bot
 require('dotenv').config();
-const { Client, GatewayIntentBits, EmbedBuilder, REST, Routes, SlashCommandBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, REST, Routes, SlashCommandBuilder, ChannelType } = require('discord.js');
 const express = require('express');
 const app = express();
 
@@ -115,19 +115,19 @@ const rest = new REST({ version: '10' }).setToken(CONFIG.token);
 })();
 
 client.on('guildMemberAdd', async (member) => {
-    const welcomeChannelId = '945325244346949696'; // ID du canal de bienvenue
-    const channel = member.guild.channels.cache.get(welcomeChannelId); // Récupérer le canal par ID
+    const welcomeChannelId = CONFIG.welcomeChannelId; // Utiliser la variable de configuration
+    const channel = member.guild.channels.cache.get(welcomeChannelId); 
 
-    if (!channel || channel.type !== 'GUILD_TEXT') {
+    if (!channel || channel.type !== ChannelType.GuildText) {
         console.log('Chaîne de bienvenue introuvable ou pas de type texte.');
-        return; // Sortir si le canal n'est pas trouvé ou n'est pas de type texte
+        return;
     }
 
     // Vérifier si le bot a la permission d'envoyer des messages
     const permissions = channel.permissionsFor(member.guild.me);
-    if (!permissions.has('SEND_MESSAGES')) {
+    if (!permissions.has('SendMessages')) {
         console.log('Le bot n\'a pas la permission d\'envoyer des messages dans ce canal.');
-        return; // Sortir si le bot n'a pas la permission
+        return;
     }
 
     // Créer un message de bienvenue
