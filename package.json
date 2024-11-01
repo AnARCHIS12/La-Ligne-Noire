@@ -2,9 +2,9 @@
   "name": "la-ligne-noire-main",
   "version": "1.0.0",
   "description": "Un bot Discord anarchiste.",
-  "main": "discord-bot.js", // Assurez-vous que ce fichier existe à la racine
+  "main": "discord-bot.js", 
   "scripts": {
-    "start": "node discord-bot.js", // Ajoutez cette ligne pour démarrer le bot
+    "start": "node discord-bot.js", 
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -12,13 +12,13 @@
     "bot",
     "anarchiste"
   ],
-  "author": "Votre Nom", // Remplacez par votre nom
+  "author": "Votre Nom", 
   "license": "ISC",
   "dependencies": {
     "discord.js": "^14.16.3",
     "dotenv": "^16.4.5"
   },
   "engines": {
-    "node": ">=16.x" // Assurez-vous que la version de Node.js est compatible
+    "node": ">=16.x" 
   }
 }
