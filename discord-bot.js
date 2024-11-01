@@ -1,10 +1,10 @@
-// Import des modules nécessaires
+// Import des modules nécessaires et configuration du bot
 require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder, REST, Routes, SlashCommandBuilder } = require('discord.js');
 const express = require('express');
-const http = require('http');
-
 const app = express();
+
+// Initialisation du client Discord avec les intents nécessaires
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -16,15 +16,9 @@ const client = new Client({
 
 // Configuration avec les variables d'environnement
 const CONFIG = {
-    token: process.env.DISCORD_TOKEN,
+    token: process.env.TOKEN,
     clientId: process.env.CLIENT_ID,
     guildId: process.env.GUILD_ID,
-    port: 3000,
-    pingInterval: 60000, // Ping toutes les minutes
-    maxRetries: 10, // Nombre maximum de tentatives de reconnexion
-    retryDelay: 30000, // Délai entre les tentatives (30 secondes)
-    pingTimeout: 10000, // Timeout pour les requêtes ping (10 secondes)
-    welcomeChannel: process.env.WELCOME_CHANNEL,
     colors: {
         black: '#000000',
         red: '#FF0000',
@@ -39,6 +33,28 @@ const CONFIG = {
         assembly: '🏛️'
     }
 };
+
+// Configuration du serveur Express pour le maintien en ligne
+app.get('/', (req, res) => {
+    res.send('Bot is running!');
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
+
+// Fonction anti-veille pour garder le bot en ligne et reconnecter si déconnecté
+function keepAlive() {
+    setInterval(() => {
+        if (client.ws.ping > 0) {
+            console.log(`Bot actif - Ping: ${client.ws.ping}ms`);
+        } else {
+            console.log('Reconnexion...');
+            client.login(CONFIG.token);
+        }
+    }, 300000); // Vérifie toutes les 5 minutes (300000ms)
+}
 
 // Définition des commandes Slash
 const commands = [
@@ -75,140 +91,13 @@ const commands = [
         .setName('manifeste')
         .setDescription('Affiche le manifeste de notre communauté'),
     new SlashCommandBuilder()
-        .setName('entraide')
-        .setDescription('Système d\'entraide mutuelle')
-        .addStringOption(option =>
-            option.setName('type')
-                .setDescription('Type d\'entraide')
-                .setRequired(true)
-                .addChoices(
-                    { name: 'Offrir', value: 'offre' },
-                    { name: 'Demander', value: 'demande' }
-                ))
-        .addStringOption(option =>
-            option.setName('description')
-                .setDescription('Description de l\'entraide')
-                .setRequired(true))
+        .setName('aide')
+        .setDescription('Affiche toutes les commandes disponibles')
 ];
 
-// Classe de gestion du Keep-Alive
-class KeepAliveManager {
-    constructor(client, port) {
-        this.client = client;
-        this.port = port;
-        this.pingCount = 0;
-        this.lastPingSuccess = true;
-        this.reconnectAttempts = 0;
-        this.pingInterval = null;
-        this.internalPingInterval = null;
-    }
-
-    start() {
-        console.log('Démarrage du système Keep-Alive...');
-        this.startKeepAlive();
-        this.startInternalPing();
-    }
-
-    startKeepAlive() {
-        if (this.pingInterval) clearInterval(this.pingInterval);
-        
-        this.pingInterval = setInterval(async () => {
-            try {
-                const status = this.client.ws.status;
-                console.log(`État actuel du WebSocket: ${status}`);
-                
-                if (status !== 0) {
-                    console.log('Bot déconnecté. Tentative de reconnexion...');
-                    await this.handleReconnection();
-                } else {
-                    this.reconnectAttempts = 0;
-                    console.log(`Bot actif - Ping #${++this.pingCount}`);
-                }
-            } catch (error) {
-                console.error('Erreur dans la routine de keep-alive:', error);
-                await this.handleReconnection();
-            }
-        }, CONFIG.pingInterval);
-    }
-
-    startInternalPing() {
-        if (this.internalPingInterval) clearInterval(this.internalPingInterval);
-        
-        this.internalPingInterval = setInterval(() => {
-            const pingPromise = new Promise((resolve, reject) => {
-                const req = http.get(`http://localhost:${this.port}`, {
-                    timeout: CONFIG.pingTimeout
-                }, (res) => {
-                    let data = '';
-                    res.on('data', chunk => data += chunk);
-                    res.on('end', () => {
-                        this.lastPingSuccess = true;
-                        this.pingCount++;
-                        console.log(`Ping interne réussi #${this.pingCount}`);
-                        resolve(true);
-                    });
-                });
-
-                req.on('error', (error) => {
-                    console.error('Erreur de ping interne:', error);
-                    this.lastPingSuccess = false;
-                    reject(error);
-                });
-
-                req.on('timeout', () => {
-                    req.destroy();
-                    this.lastPingSuccess = false;
-                    reject(new Error('Timeout du ping interne'));
-                });
-            });
-
-            pingPromise.catch(async (error) => {
-                console.error('Échec du ping interne:', error);
-                await this.handleReconnection();
-            });
-        }, CONFIG.pingInterval);
-    }
-
-    async handleReconnection() {
-        if (this.reconnectAttempts >= CONFIG.maxRetries) {
-            console.error('Nombre maximum de tentatives de reconnexion atteint. Réinitialisation du bot...');
-            this.resetKeepAlive();
-            return;
-        }
-
-        this.reconnectAttempts++;
-        console.log(`Tentative de reconnexion ${this.reconnectAttempts}/${CONFIG.maxRetries}`);
-
-        try {
-            await this.client.destroy();
-            await new Promise(resolve => setTimeout(resolve, CONFIG.retryDelay));
-            await this.client.login(CONFIG.token);
-            console.log('Reconnexion réussie!');
-            this.reconnectAttempts = 0;
-        } catch (error) {
-            console.error('Échec de la reconnexion:', error);
-            if (this.reconnectAttempts < CONFIG.maxRetries) {
-                setTimeout(() => this.handleReconnection(), CONFIG.retryDelay);
-            }
-        }
-    }
-
-    resetKeepAlive() {
-        if (this.pingInterval) clearInterval(this.pingInterval);
-        if (this.internalPingInterval) clearInterval(this.internalPingInterval);
-        this.start();
-    }
-
-    stop() {
-        if (this.pingInterval) clearInterval(this.pingInterval);
-        if (this.internalPingInterval) clearInterval(this.internalPingInterval);
-        console.log('Système Keep-Alive arrêté');
-    }
-}
-
+// Initialisation de l'API REST pour déployer les commandes slash
 const rest = new REST({ version: '10' }).setToken(CONFIG.token);
 
-// Déploiement des commandes slash
 (async () => {
     try {
         console.log('Déploiement des commandes slash...');
@@ -222,43 +111,11 @@ const rest = new REST({ version: '10' }).setToken(CONFIG.token);
     }
 })();
 
-// Message de bienvenue
-client.on('guildMemberAdd', member => {
-    const welcomeEmbed = new EmbedBuilder()
-        .setColor(CONFIG.colors.black)
-        .setTitle(`${CONFIG.emojis.anarchist} Bienvenue dans la Commune Libre!`)
-        .setDescription(`
-            **Salutations ${member.user.username}!**
-            Tu viens de rejoindre un espace d'autogestion et de liberté.
-            
-            ${CONFIG.emojis.solidarity} **Notre Vision:**
-            • Démocratie directe et participative
-            • Entraide mutuelle et solidarité
-            • Organisation horizontale
-            • Action directe et autonomie
-            
-            ${CONFIG.emojis.revolution} **Participe à la vie collective:**
-            • /assemblee - Pour créer une assemblée
-            • /vote - Pour les décisions collectives
-            • /entraide - Pour l'entraide mutuelle
-            • /manifeste - Pour comprendre nos principes
-        `)
-        .setImage('https://cdn.discordapp.com/attachments/945325244762165278/1300779415499833344/Anarchist_flag.png?ex=672214bb&is=6720c33b&hm=45a3a45cd8b40ec4699d22304dd02318fdaa0cdbe0f4149a2486208c9bf3c6ab&')
-        .setTimestamp()
-        .setFooter({ text: 'No Gods, No Masters | Power to the People' });
-
-    const welcomeChannel = member.guild.channels.cache.find(ch => ch.name === CONFIG.welcomeChannel || ch.id === CONFIG.welcomeChannel);
-    if (welcomeChannel) {
-        welcomeChannel.send({ embeds: [welcomeEmbed] });
-    } else {
-        console.error("Le canal de bienvenue n'a pas été trouvé.");
-    }
-});
-
 // Gestion des interactions Slash Command
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
+    // Exécution des commandes en fonction de leur nom
     switch (interaction.commandName) {
         case 'assemblee':
             const sujet = interaction.options.getString('sujet');
@@ -272,30 +129,16 @@ client.on('interactionCreate', async interaction => {
 
         case 'vote':
             const proposition = interaction.options.getString('proposition');
-            const duree = interaction.options.getString('duree');
+            const duree = parseInt(interaction.options.getString('duree')) * 3600000;
             const voteEmbed = new EmbedBuilder()
                 .setColor(CONFIG.colors.red)
                 .setTitle(`${CONFIG.emojis.vote} Vote Collectif`)
-                .setDescription(`**Proposition:** ${proposition}\n**Durée:** ${duree} heures`)
+                .setDescription(`**Proposition:** ${proposition}\n**Durée:** ${duree / 3600000} heures`)
                 .setTimestamp();
             const voteMessage = await interaction.reply({ embeds: [voteEmbed], fetchReply: true });
             await voteMessage.react('✅');
             await voteMessage.react('❌');
             await voteMessage.react('⚪');
-            setTimeout(async () => {
-                const fetchedMessage = await interaction.channel.messages.fetch(voteMessage.id);
-                const results = {
-                    pour: fetchedMessage.reactions.cache.get('✅')?.count - 1 || 0,
-                    contre: fetchedMessage.reactions.cache.get('❌')?.count - 1 || 0,
-                    abstention: fetchedMessage.reactions.cache.get('⚪')?.count - 1 || 0
-                };
-                const resultsEmbed = new EmbedBuilder()
-                    .setColor(CONFIG.colors.red)
-                    .setTitle(`${CONFIG.emojis.vote} Résultats du Vote`)
-                    .setDescription(`✅ Pour: ${results.pour}\n❌ Contre: ${results.contre}\n⚪ Abstention: ${results.abstention}`)
-                    .setTimestamp();
-                interaction.channel.send({ embeds: [resultsEmbed] });
-            }, parseInt(duree) * 3600000);
             break;
 
         case 'sondage':
@@ -307,30 +150,34 @@ client.on('interactionCreate', async interaction => {
                 .setDescription(`**Question:** ${question}\n**Options:**\n${options.map((option, index) => `**${index + 1}**. ${option.trim()}`).join('\n')}`)
                 .setTimestamp();
             const sondageMessage = await interaction.reply({ embeds: [sondageEmbed], fetchReply: true });
-            for (let i = 0; i < options.length; i++) {
-                await sondageMessage.react(`${i + 1}️⃣`);
+            const emojiNumbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+            for (let i = 0; i < options.length && i < 10; i++) {
+                await sondageMessage.react(emojiNumbers[i]);
             }
-            break;
-
-        case 'entraide':
-            const type = interaction.options.getString('type');
-            const description = interaction.options.getString('description');
-            const entraideEmbed = new EmbedBuilder()
-                .setColor(CONFIG.colors.red)
-                .setTitle(`${CONFIG.emojis.solidarity} Réseau d'Entraide Mutuelle`)
-                .setDescription(`**Type:** ${type === 'offre' ? 'Offre d\'aide' : 'Demande d\'aide'}\n**Description:** ${description}`)
-                .setTimestamp();
-            const entraideMessage = await interaction.reply({ embeds: [entraideEmbed], fetchReply: true });
-            await entraideMessage.react(CONFIG.emojis.solidarity);
             break;
 
         case 'manifeste':
             const manifesteEmbed = new EmbedBuilder()
-                .setColor(CONFIG.colors.black)
-                .setTitle(`${CONFIG.emojis.revolution} Manifeste de la Commune Numérique`)
-                .setDescription(`**Nos Principes Fondamentaux**\n1. **Autogestion**\n2. **Solidarité**\n3. **Action Directe**\n4. **Paix et Liberté**`)
+                .setColor(CONFIG.colors.red)
+                .setTitle(`${CONFIG.emojis.anarchist} Manifeste de notre Communauté Anarchiste`)
+                .setDescription('Voici le manifeste de notre communauté...\n**Rejoignez-nous dans cette lutte pour la liberté et l\'égalité !**')
                 .setTimestamp();
             await interaction.reply({ embeds: [manifesteEmbed] });
+            break;
+
+        case 'aide':
+            const helpEmbed = new EmbedBuilder()
+                .setColor(CONFIG.colors.gold)
+                .setTitle('Liste des Commandes')
+                .setDescription('Voici toutes les commandes disponibles dans ce bot :')
+                .addFields(
+                    { name: '/assemblee', value: 'Crée une nouvelle assemblée populaire' },
+                    { name: '/vote', value: 'Lance un vote collectif' },
+                    { name: '/sondage', value: 'Crée un sondage participatif' },
+                    { name: '/manifeste', value: 'Affiche le manifeste de notre communauté' }
+                )
+                .setTimestamp();
+            await interaction.reply({ embeds: [helpEmbed] });
             break;
 
         default:
@@ -338,26 +185,10 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// Initialisation du serveur Express
-app.get('/', (req, res) => {
-    res.send('Le bot est en ligne!');
-});
-
-const server = app.listen(CONFIG.port, () => {
-    console.log(`Serveur en ligne sur le port ${CONFIG.port}`);
-});
-
-// Instance du gestionnaire de Keep-Alive
-let keepAliveManager = new KeepAliveManager(client, CONFIG.port);
-
-// Connexion du client Discord et initialisation du Keep-Alive
+// Connexion du client Discord et démarrage de la fonction anti-veille
 client.once('ready', () => {
     console.log(`Connecté en tant que ${client.user.tag}`);
-    keepAliveManager.start();
+    keepAlive(); // Démarre la fonction anti-veille pour maintenir le bot en ligne
 });
 
-// Connexion du bot
-client.login(CONFIG.token).catch((error) => {
-    console.error('Erreur de connexion :', error);
-    process.exit(1); // Sortir du processus uniquement en cas d'erreur de connexion
-});
+client.login(CONFIG.token);
